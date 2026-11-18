@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
+    "fmt": "prettier --write .",
+    "fmt:check": "prettier --check .",
     "start": "node dist/index.js"
   },
   "keywords": [],
@@ -17,6 +19,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.6",
     "@types/pg": "^8.23.1",
+    "prettier": "^3.10.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   },
