@@ -28,7 +28,9 @@ export default function MonthlyChart({
   return (
     <section className="monthly-chart">
       <div className="chart-heading">
-        <h4>Readings over the month</h4>
+        <h3>
+          Glucose over time <small>mg/dl</small>
+        </h3>
         <label>
           Time slot
           <select value={slot} onChange={(e) => setChoice(e.target.value)}>
@@ -51,7 +53,13 @@ export default function MonthlyChart({
           >
             {y.ticks(4).map((v) => (
               <g key={v}>
-                <line x1={45} x2={550} y1={y(v)} y2={y(v)} stroke="#d0d8cd" />
+                <line
+                  x1={45}
+                  x2={550}
+                  y1={y(v)}
+                  y2={y(v)}
+                  stroke="var(--rule)"
+                />
                 <text x={37} y={y(v) + 4} textAnchor="end">
                   {v}
                 </text>
@@ -75,7 +83,7 @@ export default function MonthlyChart({
               defined={(d) => byDay.has(d)}
               x={(d) => x(d)}
               y={(d) => y(byDay.get(d)!.value_mg_dl)}
-              stroke="#215942"
+              stroke="var(--accent)"
               strokeWidth={2}
             />
             {readings.map((s) => (
@@ -84,7 +92,7 @@ export default function MonthlyChart({
                 cx={x(Number(s.date.slice(-2)))}
                 cy={y(s.value_mg_dl)}
                 r={3.5}
-                fill="#215942"
+                fill="var(--accent)"
               >
                 <title>
                   {s.date} · {s.value_mg_dl} mg/dl
@@ -94,13 +102,22 @@ export default function MonthlyChart({
           </svg>
           <details>
             <summary>View readings in mg/dl</summary>
-            <ul>
-              {readings.map((s) => (
-                <li key={s.date}>
-                  {s.date} · {s.value_mg_dl} mg/dl
-                </li>
-              ))}
-            </ul>
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Glucose (mg/dl)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {readings.map((s) => (
+                  <tr key={s.date}>
+                    <td>{s.date}</td>
+                    <td>{s.value_mg_dl}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </details>
         </>
       )}

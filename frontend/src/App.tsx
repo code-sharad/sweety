@@ -7,6 +7,7 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [signup, setSignup] = useState(false);
+  const [visible, setVisible] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -37,6 +38,7 @@ export default function App() {
       if (signup) {
         await api("auth/register", "POST", fields);
         setSignup(false);
+        setVisible(false);
         setNotice("Account created. Sign in to open your logbook.");
       } else setUser(await api<User>("auth/login", "POST", fields));
     } catch (e) {
@@ -73,7 +75,7 @@ export default function App() {
             </button>
           </div>
         ) : (
-          <span>Blood glucose tracker</span>
+          <span className="mast-note">Personal glucose journal</span>
         )}
       </header>
       {loading ? (
@@ -91,21 +93,12 @@ export default function App() {
         </main>
       ) : (
         <main className="auth">
-          <aside className="cover">
-            <span>Blood glucose journal</span>
-            <h1>
-              Your daily
-              <br />
-              <em>logbook.</em>
-            </h1>
-            <div className="rings" aria-hidden="true" />
-          </aside>
           <section className="authform">
-            <h2>{signup ? "Create an account" : "Welcome back"}</h2>
+            <h1>{signup ? "Create an account" : "Welcome back."}</h1>
             <p>
               {signup
                 ? "Start your personal glucose logbook."
-                : "Sign in to record and review your readings."}
+                : "Sign in to your glucose journal."}
             </p>
             <form key={String(signup)} onSubmit={submit}>
               {signup && (
@@ -118,20 +111,32 @@ export default function App() {
                 Email address
                 <input
                   name="email"
+                  placeholder="you@example.com"
                   type="email"
                   autoComplete="email"
                   required
                 />
               </label>
-              <label>
-                Password
-                <input
-                  name="password"
-                  type="password"
-                  autoComplete={signup ? "new-password" : "current-password"}
-                  required
-                />
-              </label>
+              <div className="password-group">
+                <label htmlFor="auth-password">Password</label>
+                <span className="password-field">
+                  <input
+                    id="auth-password"
+                    name="password"
+                    type={visible ? "text" : "password"}
+                    autoComplete={signup ? "new-password" : "current-password"}
+                    required
+                  />
+                  <button
+                    type="button"
+                    aria-label={visible ? "Hide password" : "Show password"}
+                    aria-pressed={visible}
+                    onClick={() => setVisible(!visible)}
+                  >
+                    {visible ? "Hide" : "Show"}
+                  </button>
+                </span>
+              </div>
               {error && <p role="alert">{error}</p>}
               {notice && <p role="status">{notice}</p>}
               <button className="primary" disabled={pending}>
@@ -139,7 +144,8 @@ export default function App() {
                   ? "Please wait…"
                   : signup
                     ? "Create account"
-                    : "Sign in"}
+                    : "Sign in"}{" "}
+                <span aria-hidden="true">→</span>
               </button>
             </form>
             <p>
@@ -149,6 +155,7 @@ export default function App() {
                 disabled={pending}
                 onClick={() => {
                   setSignup(!signup);
+                  setVisible(false);
                   setError("");
                   setNotice("");
                 }}
@@ -157,6 +164,13 @@ export default function App() {
               </button>
             </p>
           </section>
+          <aside className="cover" aria-label="Journal cover">
+            <img
+              src="/journal-cover.webp"
+              alt="Burgundy Sweety notebook beside a glucose meter and a tangerine."
+            />
+            <p>Your daily logbook.</p>
+          </aside>
         </main>
       )}
     </>

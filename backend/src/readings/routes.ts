@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { DatabaseError } from "pg";
 import { Router } from "express";
 import { requireUser } from "../auth/sessions";
@@ -29,6 +30,36 @@ readingsRouter.get("/", requireUser, async (req, res) => {
     [res.locals.user.id, parsed.data.date ?? null, Object.keys(slotLabels)],
   );
   res.json(result.rows);
+});
+
+const historyPage = z
+  .string()
+  .regex(/^[1-9]\d*$/)
+  .transform(Number)
+  .pipe(z.int().max(2147483647));
+const historyPageSize = 10;
+readingsRouter.get("/history", requireUser, async (req, res) => {
+  const parsed = historyPage.safeParse(req.query.page ?? "1");
+  if (!parsed.success) {
+    res.status(400).json({ message: "Enter a valid history page." });
+    return;
+  }
+  const result = await pool.query(
+    `SELECT id, to_char(reading_date, 'YYYY-MM-DD') AS reading_date, slot, value_mg_dl
+     FROM readings WHERE user_id = $1
+     ORDER BY readings.reading_date DESC, array_position($2::text[], slot) DESC
+     LIMIT $3 OFFSET $4`,
+    [
+      res.locals.user.id,
+      Object.keys(slotLabels),
+      historyPageSize + 1,
+      (parsed.data - 1) * historyPageSize,
+    ],
+  );
+  res.json({
+    rows: result.rows.slice(0, historyPageSize),
+    hasNext: result.rows.length > historyPageSize,
+  });
 });
 
 readingsRouter.post("/", requireUser, async (req, res) => {

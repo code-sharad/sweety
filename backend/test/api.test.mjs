@@ -354,3 +354,25 @@ test("demo seed populates reports and preserves edited readings on rerun", async
   assert.equal(after.data.length, count);
   assert.equal(after.data[0].value_mg_dl, 105);
 });
+
+test("reading history pages contain only the signed-in user's readings, newest first", async () => {
+  for (let day = 1; day <= 11; day++) {
+    await add(reading("2024-03-" + String(day).padStart(2, "0")));
+  }
+  await add(reading("2024-03-12"), bob);
+  const first = await request("GET", "/readings/history", alice.cookie);
+  const last = await request("GET", "/readings/history?page=2", alice.cookie);
+  assert.equal(first.data.rows.length, 10);
+  assert.equal(first.data.rows[0].reading_date, "2024-03-11");
+  assert.equal(first.data.hasNext, true);
+  assert.deepEqual(
+    last.data.rows.map((row) => row.reading_date),
+    ["2024-03-01"],
+  );
+  assert.equal(last.data.hasNext, false);
+  assert.equal(
+    (await request("GET", "/readings/history?page=0", alice.cookie)).status,
+    400,
+  );
+  assert.equal((await request("GET", "/readings/history")).status, 401);
+});
