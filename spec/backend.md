@@ -9,15 +9,17 @@ Use the [project spec](project.md) for behavior and this checklist for progress.
 - [x] Signup with Zod validation, normalized email, and bcrypt password hashing.
 - [x] Login, current-user lookup, reusable session middleware, and logout. Live HTTP checks covered invalid credentials, missing and expired sessions, and reuse of a revoked cookie.
 - [x] Create readings with POST /api/readings. Live checks covered two accounts sharing a date and slot, session-derived ownership despite supplied IDs, missing authentication, validation, concurrent duplicates, and the four-slot limit.
+- [x] List owned readings with GET /api/readings and an optional date filter. Live HTTP checks against PostgreSQL covered two accounts sharing a slot, session-scoped results, date filtering, ordering, empty results, invalid dates, and missing authentication.
+- [x] Edit and delete owned readings. Live PostgreSQL-backed HTTP checks compared the entire row after invalid, conflicting, and unauthorized requests. Checks also covered moving a reading, editing its value on a full day, and deleting it.
+
+- [x] Enforce slot opening times for new and moved readings. Fixed-clock schema checks covered all four opening boundaries in Asia/Kolkata and past-date entries.
 
 ## Next feature
 
-- [ ] List a patient's readings with GET /api/readings, including the optional date filter. Verify that a second account can use the same slot and only sees its own rows.
+- [ ] Implement daily, month-to-date, and previous-month reports, including empty ranges and a daily slot list.
 
 ## Remaining
 
-- [ ] Edit and delete owned readings. Verify rejected edits preserve the original row.
-- [ ] Implement daily, month-to-date, and previous-month reports, including empty ranges and a daily slot list.
 - [ ] Commit repeatable backend tests against an isolated test database. Cover auth, ownership, validation boundaries, concurrent duplicates, and report date boundaries and rounding.
 - [ ] Add a demo seed and document environment variables, migrations, startup, tests, and assumptions in the submission README.
 

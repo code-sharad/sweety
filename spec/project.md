@@ -60,6 +60,7 @@ Validate calendar dates as YYYY-MM-DD strings and glucose values as whole number
 - Require a valid calendar date, an allowed slot, and a whole-number glucose value. Reject invalid input with 400 and a message the UI can display. For a missing value show “Please enter a glucose value.” For a fractional or out-of-range value explain the whole-number and range requirements.
 - Reject future reading dates according to the agreed timezone. Show “Date cannot be in the future.”
 - Return 409 for a slot or daily-cap conflict. For a new reading on a full day show “You can add only 4 readings per day.” Otherwise identify the occupied slot and date. Apply the same rules when moving a reading and exclude the edited row when checking conflicts.
+- For today in Asia/Kolkata, fasting opens at midnight, after breakfast at 08:00, after lunch at 12:00, and after dinner at 19:00. Slots stay open for late entry. Apply opening times on creation and when moving a reading to another date or slot. Past dates allow all four slots. Disable unopened slots in the tracker and mark recorded slots.
 - A failed edit preserves the existing reading. Editing only the value on a full day succeeds.
 
 ### Report calculations

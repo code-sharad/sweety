@@ -16,14 +16,17 @@ const patientDate = new Intl.DateTimeFormat("en-CA", {
 
 const rangeMessage = "Enter a whole number between 40 and 600 mg/dl.";
 
+const calendarDate = z.iso
+  .date("Enter a valid date in YYYY-MM-DD format.")
+  .refine((date) => !date.startsWith("0000"), "Enter a valid calendar year.");
+
+export const readingFilterSchema = z.object({ date: calendarDate.optional() });
+
 export const readingSchema = z.object({
-  reading_date: z.iso
-    .date("Enter a valid date in YYYY-MM-DD format.")
-    .refine((date) => !date.startsWith("0000"), "Enter a valid calendar year.")
-    .refine(
-      (date) => date <= patientDate.format(new Date()),
-      "Date cannot be in the future.",
-    ),
+  reading_date: calendarDate.refine(
+    (date) => date <= patientDate.format(new Date()),
+    "Date cannot be in the future.",
+  ),
   slot: z.enum(
     Object.keys(slotLabels) as (keyof typeof slotLabels)[],
     "Select a valid time slot.",
@@ -39,3 +42,47 @@ export const readingSchema = z.object({
     .min(40, rangeMessage)
     .max(600, rangeMessage),
 });
+
+// Local opening hours in Asia/Kolkata. Slots stay open for late entries.
+const openingHours = {
+  morning_fasting: 0,
+  after_breakfast: 8,
+  after_lunch: 12,
+  after_dinner: 19,
+} satisfies Record<keyof typeof slotLabels, number>;
+
+const patientHour = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Kolkata",
+  hour: "2-digit",
+  hourCycle: "h23",
+});
+
+export const scheduledReadingSchema = readingSchema.superRefine(
+  (reading, ctx) => {
+    const now = new Date();
+    const opening = openingHours[reading.slot];
+    if (
+      reading.reading_date === patientDate.format(now) &&
+      Number(patientHour.format(now)) < opening
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["slot"],
+        message: `${slotLabels[reading.slot]} opens at ${String(opening).padStart(2, "0")}:00 IST.`,
+      });
+    }
+  },
+);
+
+export const readingUpdateSchema = readingSchema
+  .partial()
+  .refine(
+    (fields) => Object.keys(fields).length > 0,
+    "Supply at least one reading field to update.",
+  );
+
+export const readingIdSchema = z
+  .string()
+  .regex(/^\d+$/)
+  .transform(Number)
+  .pipe(z.number().int().positive().max(2147483647));

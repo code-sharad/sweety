@@ -10,7 +10,7 @@ Use the [project spec](project.md) for behavior. Update this checklist in each f
 
 - [ ] Verify successful signup and duplicate-email feedback from the browser through the development proxy.
 - [ ] Implement login, restore the current user on refresh, and clear patient data on logout.
-- [ ] Build the tracker with a date selector, readings in slot order, and values labeled mg/dl.
+- [ ] Build the tracker with a date selector, readings in slot order, and values labeled mg/dl. Disable unopened slots, show opening times, and mark recorded slots.
 - [ ] Add create, edit, and delete interactions. Preserve entered values on validation failure and show the API message.
 - [ ] Display daily, month-to-date, and previous-month reports with ranges, counts, highest, lowest, average to one decimal, and friendly empty states. Refresh affected views after changes.
 - [ ] Exercise the complete flow with two accounts in the same browser. Capture screenshots or a short recording for submission.
