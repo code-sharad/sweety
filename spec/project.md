@@ -31,7 +31,7 @@ Use PostgreSQL. All columns are required.
 
 Enforce uniqueness on (user_id, reading_date, slot). Together with the four allowed slots this enforces the daily maximum under concurrent writes. Compute reports from readings so edits and deletions are reflected immediately.
 
-Open decision for schema review: use one documented application timezone (proposed default Asia/Kolkata) or store a timezone per patient. This determines when a new day starts for future-date validation.
+The API uses Asia/Kolkata to determine today for reading-date validation.
 
 ## 2. Backend
 

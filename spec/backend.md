@@ -8,10 +8,10 @@ Use the [project spec](project.md) for behavior and this checklist for progress.
 - [x] Users, readings, and sessions migrations applied to Neon. PostgreSQL enforces one reading per patient, date, and slot.
 - [x] Signup with Zod validation, normalized email, and bcrypt password hashing.
 - [x] Login, current-user lookup, reusable session middleware, and logout. Live HTTP checks covered invalid credentials, missing and expired sessions, and reuse of a revoked cookie.
+- [x] Create readings with POST /api/readings. Live checks covered two accounts sharing a date and slot, session-derived ownership despite supplied IDs, missing authentication, validation, concurrent duplicates, and the four-slot limit.
 
 ## Next feature
 
-- [ ] Create a reading with POST /api/readings. Resolve which timezone defines today, validate date, slot, and glucose value with Zod, derive ownership from the session, and return clear duplicate-slot and full-day errors.
 - [ ] List a patient's readings with GET /api/readings, including the optional date filter. Verify that a second account can use the same slot and only sees its own rows.
 
 ## Remaining
