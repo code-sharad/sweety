@@ -8,6 +8,7 @@ import { createServer } from "node:net";
 import { once } from "node:events";
 import EmbeddedPostgres from "embedded-postgres";
 import bcrypt from "bcrypt";
+import { execFileSync } from "node:child_process";
 
 let db, dir, pool, server, url, alice, bob;
 const slots = [
@@ -304,4 +305,24 @@ test("inclusive report ranges, slot order, rounding and changes after edit and d
   assert.equal((await report("daily", "2024-02-29")).summary.average, 96);
   assert.equal((await request("DELETE", path, alice.cookie)).status, 204);
   assert.equal((await report("daily", "2024-02-29")).summary.average, 91);
+});
+
+test("demo seed can be rerun and its credentials open the sample report", async () => {
+  for (let run = 0; run < 2; run++) {
+    execFileSync("npm", ["run", "seed"], { env: process.env });
+  }
+  const login = await request("POST", "/auth/login", null, {
+    email: "demo@sweety.example",
+    password: "sweety-local-demo",
+  });
+  assert.equal(login.status, 200);
+  const list = await request("GET", "/readings", login.cookie);
+  assert.equal(list.data.length, 4);
+  const daily = await report("daily", "2024-03-15", login);
+  assert.deepEqual(daily.summary, {
+    count: 2,
+    lowest: 94,
+    highest: 132,
+    average: 113,
+  });
 });

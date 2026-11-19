@@ -9,7 +9,8 @@
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check .",
     "start": "node dist/index.js",
-    "test": "npm run build && node --test test/*.test.mjs"
+    "test": "npm run build && node --test test/*.test.mjs",
+    "seed": "tsx src/seed.ts"
   },
   "keywords": [],
   "author": "",
