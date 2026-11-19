@@ -1,11 +1,10 @@
 import express from "express";
-import { signup } from "./signup";
-import { sessions } from "./session";
+import { authRouter } from "./auth/routes";
 
 export const app = express();
 
 app.use(express.json());
-app.use("/api/auth", signup, sessions);
+app.use("/api/auth", authRouter);
 
 app.get("/api/health", (_request, response) => {
   response.json({ status: "ok" });
