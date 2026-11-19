@@ -1,6 +1,6 @@
 # Sweety
 
-Sweety records a patient's blood glucose readings and summarizes them by day and month. The Express API supports registration, cookie-based login, reading management, and reports. The React client currently provides signup. Login and the patient tracker are the next frontend milestones.
+Sweety records a patient's blood glucose readings and summarizes them by day and month. The Express API supports registration, cookie-based login, reading management, and reports. In the React client, patients can sign up, sign in, manage readings by date, and view all three reports.
 
 ## Local setup
 
@@ -60,25 +60,9 @@ Open the local URL printed by Vite. The API health check is available at `http:/
 
 ## Try the demo
 
-Run `npm --prefix backend run seed` from the repository root against your development database. The seed creates a demo patient and four sample readings. Rerunning it fills missing sample slots and preserves existing values.
+Run `npm --prefix backend run seed` from the repository root against your development database. The seed creates the demo patient and sample readings for each day from 1 September 2026 through today in Asia/Kolkata. Past dates have four slots each, and today includes only slots that have opened. Rerunning it preserves existing readings.
 
-With the API running, open [the health endpoint](http://localhost:3000/api/health) in your browser. Open its developer console and run the following JavaScript. The browser keeps the session cookie for the second request.
-
-```js
-const login = await fetch("/api/auth/login", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    email: "demo@sweety.example",
-    password: "sweety-local-demo",
-  }),
-});
-if (!login.ok) throw new Error(await login.text());
-const report = await fetch("/api/reports?period=daily&date=2024-03-15");
-console.log(await report.json());
-```
-
-For March 15, the seeded daily report contains two readings, 94 and 132 mg/dl, averaging 113. Use the same date with `month_to_date` to include March 1, or `previous_month` to see the February 29 reading.
+With the API and client running, open the Vite URL and sign in with `demo@sweety.example` and password `sweety-local-demo`. Select **15 October 2026** to explore the daily, October month-to-date, and September monthly reports.
 
 ## Checks
 
@@ -93,6 +77,6 @@ The backend suite builds TypeScript, starts a disposable PostgreSQL cluster, app
 
 ## Notes
 
-- Dates and slot opening times use Asia/Kolkata. For today, fasting opens at midnight, after breakfast at 08:00, after lunch at noon, and after dinner at 19:00. Earlier slots stay open for late entries.
-- Each patient can record one whole-number value from 40 through 600 mg/dl per slot per date. Reports use the selected calendar date and reflect saved edits and deletions immediately.
-- After completing the tracker, the first improvement would be browser tests covering a patient's full workflow from login through editing a reading and seeing the updated report.
+- The assignment leaves the patient timezone open. Sweety uses Asia/Kolkata for both the tracker and the API so they agree on when a new day starts, even if the browser uses another timezone.
+- The assignment names four meal slots and leaves their opening times unspecified. For the current day, Sweety assumes fasting opens at midnight, after breakfast at 08:00, after lunch at noon, and after dinner at 19:00 IST. Slots stay open once available so patients can enter a reading later. All four slots are available for past dates.
+- With more time, I would automate the two-account browser flow, including switching patients on the same device and checking that editing a reading updates the report.

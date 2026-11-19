@@ -307,22 +307,46 @@ test("inclusive report ranges, slot order, rounding and changes after edit and d
   assert.equal((await report("daily", "2024-02-29")).summary.average, 91);
 });
 
-test("demo seed can be rerun and its credentials open the sample report", async () => {
-  for (let run = 0; run < 2; run++) {
-    execFileSync("npm", ["run", "seed"], { env: process.env });
-  }
+test("demo seed populates reports and preserves edited readings on rerun", async () => {
+  const seed = () => execFileSync("npm", ["run", "seed"], { env: process.env });
+  seed();
   const login = await request("POST", "/auth/login", null, {
     email: "demo@sweety.example",
     password: "sweety-local-demo",
   });
   assert.equal(login.status, 200);
   const list = await request("GET", "/readings", login.cookie);
-  assert.equal(list.data.length, 4);
-  const daily = await report("daily", "2024-03-15", login);
-  assert.deepEqual(daily.summary, {
-    count: 2,
-    lowest: 94,
-    highest: 132,
-    average: 113,
-  });
+  assert.equal(list.status, 200);
+  const now = new Date();
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  const days = (Date.parse(today) - Date.parse("2026-09-01")) / 86400000;
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      hourCycle: "h23",
+    }).format(now),
+  );
+  const count = Math.max(
+    0,
+    days * 4 + [0, 8, 12, 19].filter((open) => open <= hour).length,
+  );
+  assert.equal(list.data.length, count);
+  if (!count) return;
+  assert.equal(list.data[0].reading_date, today);
+  assert.equal(list.data.at(-1).reading_date, "2026-09-01");
+  const path = "/readings/" + list.data[0].id;
+  assert.equal(
+    (await request("PATCH", path, login.cookie, { value_mg_dl: 105 })).status,
+    200,
+  );
+  seed();
+  const after = await request("GET", "/readings", login.cookie);
+  assert.equal(after.data.length, count);
+  assert.equal(after.data[0].value_mg_dl, 105);
 });

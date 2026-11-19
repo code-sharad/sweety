@@ -32,17 +32,28 @@ async function seed() {
       }
       userId = existing.rows[0].id;
     }
-    await client.query(
-      `INSERT INTO readings (user_id, reading_date, slot, value_mg_dl) VALUES
-       ($1, '2024-02-29', 'morning_fasting', 96),
-       ($1, '2024-03-01', 'after_breakfast', 128),
-       ($1, '2024-03-15', 'morning_fasting', 94),
-       ($1, '2024-03-15', 'after_lunch', 132)
+    const samples = await client.query(
+      `WITH local_clock AS (
+         SELECT now() AT TIME ZONE 'Asia/Kolkata' AS local_now
+       ), slots(slot, opening_hour, baseline) AS (
+         VALUES ('morning_fasting', 0, 94), ('after_breakfast', 8, 120),
+                ('after_lunch', 12, 128), ('after_dinner', 19, 123)
+       )
+       INSERT INTO readings (user_id, reading_date, slot, value_mg_dl)
+       SELECT $1, DATE '2026-09-01' + day_offset, slot,
+              baseline + (day_offset * 7 + opening_hour * 3) % 23
+       FROM local_clock
+       CROSS JOIN generate_series(0, local_now::date - DATE '2026-09-01') AS days(day_offset)
+       CROSS JOIN slots
+       WHERE DATE '2026-09-01' + day_offset < local_now::date
+          OR opening_hour <= EXTRACT(HOUR FROM local_now)
        ON CONFLICT (user_id, reading_date, slot) DO NOTHING`,
       [userId],
     );
     await client.query("COMMIT");
-    console.log("Demo patient ready. Select 2024-03-15 for sample reports.");
+    console.log(
+      `Demo patient ready. Added ${samples.rowCount} sample readings.`,
+    );
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
