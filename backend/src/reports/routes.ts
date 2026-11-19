@@ -43,7 +43,10 @@ reportsRouter.get("/", requireUser, async (req, res) => {
             min(value_mg_dl) AS lowest, round(avg(value_mg_dl), 1)::float8 AS average,
             json_agg(json_build_object('slot', slot, 'value_mg_dl', value_mg_dl)
                      ORDER BY array_position($4::text[], slot))
-              FILTER (WHERE $5::boolean) AS readings
+              FILTER (WHERE $5::boolean) AS readings,
+            json_agg(json_build_object('date', to_char(reading_date, 'YYYY-MM-DD'),
+                     'slot', slot, 'value_mg_dl', value_mg_dl) ORDER BY reading_date, slot)
+              FILTER (WHERE NOT $5::boolean) AS series
      FROM readings
      WHERE user_id = $1 AND reading_date BETWEEN $2::date AND $3::date`,
     [
@@ -54,11 +57,13 @@ reportsRouter.get("/", requireUser, async (req, res) => {
       period === "daily",
     ],
   );
-  const { readings, ...summary } = result.rows[0];
+  const { readings, series, ...summary } = result.rows[0];
   res.json({
     period,
     range,
     summary,
-    ...(period === "daily" && { readings: readings ?? [] }),
+    ...(period === "daily"
+      ? { readings: readings ?? [] }
+      : { series: series ?? [] }),
   });
 });

@@ -277,3 +277,37 @@ article {
 .empty-report {
   margin: 1.2rem 0 0;
 }
+.monthly-chart {
+  border-top: 1px solid #d0d8cd;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+}
+.chart-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.chart-heading h4 {
+  margin: 0;
+}
+.chart-heading select {
+  font: inherit;
+  color: inherit;
+  background: white;
+  border: 1px solid #abbab0;
+  border-radius: 0.4rem;
+  padding: 0.4rem;
+}
+.monthly-chart svg {
+  width: 100%;
+  max-width: 52rem;
+  display: block;
+  margin: 0.75rem auto;
+  fill: currentColor;
+  font-size: 13px;
+}
+.monthly-chart summary {
+  cursor: pointer;
+}

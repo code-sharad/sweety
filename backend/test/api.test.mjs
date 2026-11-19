@@ -286,6 +286,10 @@ test("inclusive report ranges, slot order, rounding and changes after edit and d
   const mtd = await report("month_to_date", "2024-02-28");
   assert.deepEqual(mtd.range, { start: "2024-02-01", end: "2024-02-28" });
   assert.equal(mtd.summary.count, 1);
+  assert.deepEqual(mtd.series, [
+    { date: "2024-02-01", slot: slots[2], value_mg_dl: 80 },
+  ]);
+  assert.equal(month.series.length, 3);
   const january = await report("previous_month", "2024-01-01");
   assert.deepEqual(january.range, { start: "2023-12-01", end: "2023-12-31" });
   assert.equal(january.summary.count, 1);

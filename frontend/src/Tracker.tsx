@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, ApiError, message } from "./api";
 
+import MonthlyChart, { type Sample } from "./MonthlyChart";
+
 const slots = [
   ["morning_fasting", "Morning (fasting)", 0],
   ["after_breakfast", "After breakfast", 8],
@@ -26,6 +28,7 @@ const hourFormat = new Intl.DateTimeFormat("en-GB", {
 });
 type Reading = { id: number; slot: string; value_mg_dl: number };
 type Report = {
+  series?: Sample[];
   range: { start: string; end: string };
   summary: {
     count: number;
@@ -335,6 +338,13 @@ function ReportDetails({
               <dd>{summary.count}</dd>
             </div>
           </dl>
+          {report.series && (
+            <MonthlyChart
+              samples={report.series}
+              end={range.end}
+              slots={slots}
+            />
+          )}
           {rows && (
             <ul aria-label="Daily readings">
               {rows.map((row) => (
