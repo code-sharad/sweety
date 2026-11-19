@@ -47,7 +47,7 @@ Build a Node.js and Express JSON API. Proposed paths below share the /api prefix
 | DELETE /readings/:id | Delete the owned reading (204). |
 | GET /reports?period=daily&date=YYYY-MM-DD | Accept daily, month_to_date, or previous_month. Return the inclusive date range, summary, and for daily reports the ordered readings (200). |
 
-Choose the authentication mechanism during backend design. Derive ownership from the authenticated identity. Require authentication for every readings and reports endpoint (401). Scope updates and deletes by both user and reading ID. Return 404 for missing or other users' readings. Keep password hashes out of responses.
+Use PostgreSQL-backed sessions with an HttpOnly cookie and a seven-day expiry. GET /api/auth/me returns the current user or 401. POST /api/auth/logout revokes the session, clears the cookie, and returns 204. Derive ownership from the authenticated identity. Require authentication for every readings and reports endpoint (401). Scope updates and deletes by both user and reading ID. Return 404 for missing or other users' readings. Keep password hashes out of responses.
 
 ### Request validation with Zod
 

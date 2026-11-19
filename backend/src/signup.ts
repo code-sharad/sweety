@@ -3,7 +3,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { pool } from "./db";
 
-const registration = z.object({
+export const registration = z.object({
   name: z.string().trim().min(1, "Enter your name."),
   email: z
     .string()
