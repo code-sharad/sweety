@@ -14,12 +14,9 @@ Use the [project spec](project.md) for behavior and this checklist for progress.
 
 - [x] Enforce slot opening times for new and moved readings. Fixed-clock schema checks covered all four opening boundaries in Asia/Kolkata and past-date entries.
 - [x] Daily, month-to-date, and previous-month reports. PostgreSQL-backed HTTP checks covered ownership, authentication, invalid filters, ordered daily slots, rounding, empty results, leap February, the January year boundary, and updated results after editing and deleting readings.
+- [x] Repeatable backend integration tests. Run `npm test` from `backend` to build the API, start a temporary local PostgreSQL cluster, apply the migrations, exercise the HTTP endpoints, and remove the cluster. All five scenarios passed, covering auth, ownership, validation and slot opening boundaries, concurrent duplicates, rejected edits, and report date boundaries and rounding.
 
 ## Next feature
-
-- [ ] Commit repeatable backend tests against an isolated test database. Cover auth, ownership, validation boundaries, concurrent duplicates, and report date boundaries and rounding.
-
-## Remaining
 
 - [ ] Add a demo seed and document environment variables, migrations, startup, tests, and assumptions in the submission README.
 
