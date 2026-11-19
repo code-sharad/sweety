@@ -2,7 +2,11 @@
 
 Sweety records a patient's blood glucose readings and summarizes them by day and month. The Express API supports registration, cookie-based login, reading management, and reports. In the React client, patients can sign up, sign in, manage readings by date, and view all three reports.
 
-## Local setup
+## Run with Docker Compose
+
+From the repository root, run `docker compose up --build -d` and open [Sweety](http://localhost:3000). The app serves the React client and API together. PostgreSQL applies the migrations on first startup and keeps the data in a named volume. Run `docker compose down` to stop the stack.
+
+## Local setup without Compose
 
 Install Node.js 26 and npm. Run these commands from the repository root.
 

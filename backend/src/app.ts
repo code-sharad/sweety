@@ -13,3 +13,7 @@ app.use("/api/reports", reportsRouter);
 app.get("/api/health", (_request, response) => {
   response.json({ status: "ok" });
 });
+
+if (process.env.STATIC_DIR) {
+  app.use(express.static(process.env.STATIC_DIR));
+}
