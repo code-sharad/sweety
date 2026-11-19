@@ -13,14 +13,14 @@ Use the [project spec](project.md) for behavior and this checklist for progress.
 - [x] Edit and delete owned readings. Live PostgreSQL-backed HTTP checks compared the entire row after invalid, conflicting, and unauthorized requests. Checks also covered moving a reading, editing its value on a full day, and deleting it.
 
 - [x] Enforce slot opening times for new and moved readings. Fixed-clock schema checks covered all four opening boundaries in Asia/Kolkata and past-date entries.
+- [x] Daily, month-to-date, and previous-month reports. PostgreSQL-backed HTTP checks covered ownership, authentication, invalid filters, ordered daily slots, rounding, empty results, leap February, the January year boundary, and updated results after editing and deleting readings.
 
 ## Next feature
 
-- [ ] Implement daily, month-to-date, and previous-month reports, including empty ranges and a daily slot list.
+- [ ] Commit repeatable backend tests against an isolated test database. Cover auth, ownership, validation boundaries, concurrent duplicates, and report date boundaries and rounding.
 
 ## Remaining
 
-- [ ] Commit repeatable backend tests against an isolated test database. Cover auth, ownership, validation boundaries, concurrent duplicates, and report date boundaries and rounding.
 - [ ] Add a demo seed and document environment variables, migrations, startup, tests, and assumptions in the submission README.
 
 ## Working agreements

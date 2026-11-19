@@ -16,7 +16,7 @@ const patientDate = new Intl.DateTimeFormat("en-CA", {
 
 const rangeMessage = "Enter a whole number between 40 and 600 mg/dl.";
 
-const calendarDate = z.iso
+export const calendarDate = z.iso
   .date("Enter a valid date in YYYY-MM-DD format.")
   .refine((date) => !date.startsWith("0000"), "Enter a valid calendar year.");
 
