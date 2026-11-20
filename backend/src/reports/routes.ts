@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireUser } from "../auth/sessions";
 import { pool } from "../db/pool";
 import { calendarDate, slotLabels } from "../readings/schema";
+import { cacheReport, getCachedReport } from "./cache";
 
 export const reportsRouter = Router();
 
@@ -35,6 +36,15 @@ reportsRouter.get("/", requireUser, async (req, res) => {
 
   const { period } = parsed.data;
   const range = reportRange(parsed.data);
+  const userId = res.locals.user.id;
+  const revision = res.locals.reportRevision;
+  const cacheKey = `sweety:reports:v1:${userId}:${revision}:${period}:${range.start}:${range.end}`;
+  const cached = await getCachedReport(cacheKey);
+  if (cached !== null) {
+    res.type("json").send(cached);
+    return;
+  }
+
   // PostgreSQL represents ISO year 0000 as 1 BC.
   const sqlDate = (date: string) =>
     date.startsWith("0000") ? "0001" + date.slice(4) + " BC" : date;
@@ -50,7 +60,7 @@ reportsRouter.get("/", requireUser, async (req, res) => {
      FROM readings
      WHERE user_id = $1 AND reading_date BETWEEN $2::date AND $3::date`,
     [
-      res.locals.user.id,
+      userId,
       sqlDate(range.start),
       sqlDate(range.end),
       Object.keys(slotLabels),
@@ -58,12 +68,14 @@ reportsRouter.get("/", requireUser, async (req, res) => {
     ],
   );
   const { readings, series, ...summary } = result.rows[0];
-  res.json({
+  const report = {
     period,
     range,
     summary,
     ...(period === "daily"
       ? { readings: readings ?? [] }
       : { series: series ?? [] }),
-  });
+  };
+  await cacheReport(cacheKey, report);
+  res.json(report);
 });

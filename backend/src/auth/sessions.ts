@@ -23,7 +23,7 @@ function sessionHash(req: Request) {
 
 export const requireUser: RequestHandler = async (req, res, next) => {
   const result = await pool.query(
-    `SELECT u.id, u.name, u.email FROM sessions s
+    `SELECT u.id, u.name, u.email, u.report_revision FROM sessions s
      JOIN users u ON u.id = s.user_id
      WHERE s.token_hash = $1 AND s.expires_at > now()`,
     [sessionHash(req)],
@@ -32,7 +32,9 @@ export const requireUser: RequestHandler = async (req, res, next) => {
     res.status(401).json({ message: "Please log in." });
     return;
   }
-  res.locals.user = result.rows[0];
+  const { report_revision, ...user } = result.rows[0];
+  res.locals.user = user;
+  res.locals.reportRevision = report_revision;
   next();
 };
 

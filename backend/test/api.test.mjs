@@ -10,7 +10,8 @@ import EmbeddedPostgres from "embedded-postgres";
 import bcrypt from "bcrypt";
 import { execFileSync } from "node:child_process";
 
-let db, dir, pool, server, url, alice, bob;
+const testRedisUrl = process.env.TEST_REDIS_URL;
+let db, dir, pool, server, url, alice, bob, reportRedis;
 const slots = [
   "morning_fasting",
   "after_breakfast",
@@ -67,7 +68,11 @@ before(async () => {
     .sort()) {
     await pool.query(await readFile(join("migrations", file), "utf8"));
   }
+  if (testRedisUrl) process.env.REDIS_URL = testRedisUrl;
+  else delete process.env.REDIS_URL;
   const { app } = await import("../dist/app.js");
+  ({ reportRedis } = await import("../dist/reports/cache.js"));
+  if (reportRedis && !reportRedis.isReady) await once(reportRedis, "ready");
   server = app.listen(0, "127.0.0.1");
   await once(server, "listening");
   url = `http://127.0.0.1:${server.address().port}/api`;
@@ -77,6 +82,7 @@ before(async () => {
 
 after(async () => {
   if (server) await new Promise((resolve) => server.close(resolve));
+  if (reportRedis?.isOpen) reportRedis.destroy();
   await pool?.end();
   await db?.stop();
   if (dir) await rm(dir, { recursive: true, force: true });
@@ -376,3 +382,52 @@ test("reading history pages contain only the signed-in user's readings, newest f
   );
   assert.equal((await request("GET", "/readings/history")).status, 401);
 });
+
+test(
+  "Redis reuses reports and invalidates only the patient whose readings change",
+  { skip: !testRedisUrl },
+  async (t) => {
+    let aggregations = 0;
+    const query = pool.query.bind(pool);
+    t.mock.method(pool, "query", (sql, ...args) => {
+      if (sql.startsWith("SELECT count(*)::int AS count, max(value_mg_dl)"))
+        aggregations++;
+      return query(sql, ...args);
+    });
+
+    const april = "2024-04-10";
+    const may = "2024-05-10";
+    assert.equal((await report("daily", april)).summary.count, 0);
+    assert.equal((await report("daily", april)).summary.count, 0);
+    assert.equal(aggregations, 1);
+
+    await add(reading(april, slots[0], 170), bob);
+    assert.equal((await report("daily", april, bob)).summary.average, 170);
+    const countBeforeCreate = aggregations;
+    const created = await add(reading(april));
+    assert.equal((await report("daily", april)).summary.average, 100);
+    assert.equal((await report("daily", april, bob)).summary.average, 170);
+    assert.equal(aggregations, countBeforeCreate + 1);
+
+    assert.equal((await report("previous_month", may)).summary.count, 1);
+    const countBeforeRepeat = aggregations;
+    assert.equal(
+      (await report("previous_month", "2024-05-23")).summary.count,
+      1,
+    );
+    assert.equal(aggregations, countBeforeRepeat);
+    assert.equal((await report("month_to_date", may)).summary.count, 0);
+
+    const path = `/readings/${created.id}`;
+    const moved = await request("PATCH", path, alice.cookie, {
+      reading_date: may,
+      value_mg_dl: 120,
+    });
+    assert.equal(moved.status, 200);
+    assert.equal((await report("daily", april)).summary.count, 0);
+    assert.equal((await report("previous_month", may)).summary.count, 0);
+    assert.equal((await report("month_to_date", may)).summary.average, 120);
+    assert.equal((await request("DELETE", path, alice.cookie)).status, 204);
+    assert.equal((await report("month_to_date", may)).summary.count, 0);
+  },
+);
