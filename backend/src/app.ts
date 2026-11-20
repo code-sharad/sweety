@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import { authRouter } from "./auth/routes";
 import { doctorRouter } from "./doctor/routes";
@@ -21,3 +22,5 @@ app.get("/api/health", (_request, response) => {
 if (process.env.STATIC_DIR) {
   app.use(express.static(process.env.STATIC_DIR));
 }
+
+export default app;
