@@ -1,6 +1,6 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { requireUser } from "../auth/sessions";
+import { requireRole, requireUser } from "../auth/sessions";
 import { pool } from "../db/pool";
 import { calendarDate, slotLabels } from "../readings/schema";
 import { cacheReport, getCachedReport } from "./cache";
@@ -26,7 +26,17 @@ function reportRange({ date, period }: z.infer<typeof reportFilter>) {
   return { start: period === "daily" ? date : monthStart, end: date };
 }
 
-reportsRouter.get("/", requireUser, async (req, res) => {
+reportsRouter.get("/", requireUser, requireRole("patient"), (req, res) =>
+  sendReport(req, res, res.locals.user.id, res.locals.reportRevision),
+);
+
+export async function sendReport(
+  req: Request,
+  res: Response,
+  patientId: number,
+  revision: string,
+) {
+  res.set("Cache-Control", "no-store");
   const parsed = reportFilter.safeParse(req.query);
   if (!parsed.success) {
     const issue = parsed.error.issues[0]!;
@@ -36,9 +46,7 @@ reportsRouter.get("/", requireUser, async (req, res) => {
 
   const { period } = parsed.data;
   const range = reportRange(parsed.data);
-  const userId = res.locals.user.id;
-  const revision = res.locals.reportRevision;
-  const cacheKey = `sweety:reports:v1:${userId}:${revision}:${period}:${range.start}:${range.end}`;
+  const cacheKey = `sweety:reports:v1:${patientId}:${revision}:${period}:${range.start}:${range.end}`;
   const cached = await getCachedReport(cacheKey);
   if (cached !== null) {
     res.type("json").send(cached);
@@ -60,7 +68,7 @@ reportsRouter.get("/", requireUser, async (req, res) => {
      FROM readings
      WHERE user_id = $1 AND reading_date BETWEEN $2::date AND $3::date`,
     [
-      userId,
+      patientId,
       sqlDate(range.start),
       sqlDate(range.end),
       Object.keys(slotLabels),
@@ -78,4 +86,4 @@ reportsRouter.get("/", requireUser, async (req, res) => {
   };
   await cacheReport(cacheKey, report);
   res.json(report);
-});
+}

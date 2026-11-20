@@ -18,7 +18,7 @@ authRouter.post("/register", async (req, res) => {
   const hash = await bcrypt.hash(password, 12);
   const result = await pool.query(
     `INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3)
-     ON CONFLICT (email) DO NOTHING RETURNING id, name, email`,
+     ON CONFLICT (email) DO NOTHING RETURNING id, name, email, role`,
     [name, email, hash],
   );
   if (!result.rowCount) {
@@ -38,7 +38,7 @@ authRouter.post("/login", async (req, res) => {
     return;
   }
   const result = await pool.query(
-    "SELECT id, name, email, password_hash FROM users WHERE email = $1",
+    "SELECT id, name, email, role, password_hash FROM users WHERE email = $1",
     [parsed.data.email],
   );
   const user = result.rows[0];
@@ -50,7 +50,12 @@ authRouter.post("/login", async (req, res) => {
     return;
   }
   await startSession(user.id, res);
-  res.json({ id: user.id, name: user.name, email: user.email });
+  res.json({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+  });
 });
 
 authRouter.get("/me", requireUser, (_req, res) => {

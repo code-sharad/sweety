@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, ApiError, message } from "./api";
 import { slots } from "./slots";
 import MonthlyChart, { type Sample } from "./MonthlyChart";
+import type { ReportPeriod } from "./ReportFilters";
 
 type Report = {
   readings?: { slot: string; value_mg_dl: number }[];
@@ -23,10 +24,12 @@ const rangeFormat = new Intl.DateTimeFormat("en-GB", {
 export default function ReportPage({
   date,
   period,
+  patientId,
   onExpired,
 }: {
   date: string;
-  period: string;
+  period: ReportPeriod;
+  patientId?: number;
   onExpired: () => void;
 }) {
   const [report, setReport] = useState<Report | null>(null);
@@ -38,7 +41,11 @@ export default function ReportPage({
   }, [onExpired]);
   useEffect(() => {
     let active = true;
-    api<Report>("reports?period=" + period + "&date=" + date)
+    const path =
+      patientId === undefined
+        ? "reports"
+        : `doctor/patients/${patientId}/reports`;
+    api<Report>(`${path}?period=${period}&date=${date}`)
       .then((result) => {
         if (active) setReport(result);
       })
@@ -50,7 +57,7 @@ export default function ReportPage({
     return () => {
       active = false;
     };
-  }, [date, period, attempt]);
+  }, [date, period, patientId, attempt]);
   if (error)
     return (
       <div role="alert">
@@ -83,8 +90,16 @@ export default function ReportPage({
       {summary.count === 0 ? (
         <section className="empty-report">
           <h3>No readings for this period</h3>
-          <p>Choose another period or open your logbook to add a reading.</p>
-          <a href="#logbook">Open logbook →</a>
+          {patientId === undefined ? (
+            <>
+              <p>
+                Choose another period or open your logbook to add a reading.
+              </p>
+              <a href="#logbook">Open logbook →</a>
+            </>
+          ) : (
+            <p>Choose another date or report period.</p>
+          )}
         </section>
       ) : (
         <div className="report-layout">

@@ -1,12 +1,12 @@
 # Sweety
 
-Sweety records a patient's blood glucose readings and summarizes them by day and month. The Express API supports registration, cookie-based login, reading management, and reports. In the React client, patients can sign up, sign in, manage readings by date, and view all three reports.
+Sweety records a patient's blood glucose readings and summarizes them by day and month. Patients can sign up, sign in, manage readings by date, and view all three reports. Doctors sign in through the same form and have read-only access to reports for their assigned patients.
 
 ## Run with Docker Compose
 
 From the repository root, run `docker compose up --build -d` and open [Sweety](http://localhost:3000). The app serves the React client and API together. PostgreSQL applies the migrations on first startup and keeps the data in a named volume. Run `docker compose down` to stop the stack.
 
-If you already have a Compose database volume, apply any pending migrations before rebuilding. For a database that already has the first two migrations, run `docker compose exec -T db psql -v ON_ERROR_STOP=1 -U sweety -d sweety < backend/migrations/003_report_revision.sql` once.
+If you already have a Compose database volume, apply any pending migrations before rebuilding. For example, if migrations 001 through 003 are already applied, run `docker compose exec -T db psql -v ON_ERROR_STOP=1 -U sweety -d sweety < backend/migrations/005_doctor_roles.sql` once.
 
 ## Local setup without Compose
 
@@ -50,6 +50,7 @@ For Neon, open the SQL Editor on the same branch and database. For Docker, conne
 1. [001_initial.sql](backend/migrations/001_initial.sql)
 2. [002_sessions.sql](backend/migrations/002_sessions.sql)
 3. [003_report_revision.sql](backend/migrations/003_report_revision.sql)
+4. [005_doctor_roles.sql](backend/migrations/005_doctor_roles.sql)
 
 ### Report caching
 
@@ -74,6 +75,10 @@ Open the local URL printed by Vite. The API health check is available at `http:/
 Run `npm --prefix backend run seed` from the repository root against your development database. The seed creates the demo patient and sample readings for each day from 1 September 2026 through today in Asia/Kolkata. Past dates have four slots each, and today includes only slots that have opened. Rerunning it preserves existing readings.
 
 With the API and client running, open the Vite URL and sign in with `demo@sweety.example` and password `sweety-local-demo`. Select **15 October 2026** to explore the daily, October month-to-date, and September monthly reports.
+
+To try the doctor view, sign in with `doctor@sweety.example` and password `sweety-local-doctor`. The first seed run assigns Demo Patient to this doctor. Public sign-ups create patient accounts, and a trusted database operator provisions doctor accounts.
+
+As a patient, open **Share reports**, find your doctor by their exact account email, and confirm the name and email before sharing. The doctor can refresh **Patient reports** to see you in their assigned-patient list. To stop sharing, select **Revoke access**. This blocks the doctor's next request for your reports, even if a report is cached. Rerunning the demo seed preserves your choice.
 
 ## Checks
 

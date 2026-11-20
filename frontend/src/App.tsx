@@ -1,5 +1,6 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, message, type User } from "./api";
+import DoctorDashboard from "./DoctorDashboard";
 import Tracker from "./Tracker";
 import "./App.css";
 
@@ -60,6 +61,10 @@ export default function App() {
       setPending(false);
     }
   }
+  const expireSession = useCallback(() => {
+    setUser(null);
+    setNotice("Your session expired. Please sign in again.");
+  }, []);
   return (
     <>
       <header className="mast">
@@ -83,13 +88,11 @@ export default function App() {
       ) : user ? (
         <main>
           {error && <p role="alert">{error}</p>}
-          <Tracker
-            key={user.id}
-            onExpired={() => {
-              setUser(null);
-              setNotice("Your session expired. Please sign in again.");
-            }}
-          />
+          {user.role === "doctor" ? (
+            <DoctorDashboard key={user.id} onExpired={expireSession} />
+          ) : (
+            <Tracker key={user.id} onExpired={expireSession} />
+          )}
         </main>
       ) : (
         <main className="auth">

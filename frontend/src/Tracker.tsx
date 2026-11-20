@@ -2,39 +2,35 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, ApiError, message } from "./api";
 
 import ReadingHistory from "./ReadingHistory";
+import {
+  ReportDateInput,
+  ReportPeriodPicker,
+  type ReportPeriod,
+} from "./ReportFilters";
 import ReportPage from "./ReportPage";
+import ReportSharing from "./ReportSharing";
+import {
+  patientDayFormat,
+  patientTimeZone,
+  usePatientClock,
+} from "./patientTime";
 import { slots } from "./slots";
-const periods = [
-  ["daily", "Daily"],
-  ["month_to_date", "Month-to-date"],
-  ["previous_month", "Last month"],
-] as const;
-const zone = "Asia/Kolkata";
-const dayFormat = new Intl.DateTimeFormat("en-CA", {
-  timeZone: zone,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
 const hourFormat = new Intl.DateTimeFormat("en-GB", {
-  timeZone: zone,
+  timeZone: patientTimeZone,
   hour: "2-digit",
   hourCycle: "h23",
 });
 type Reading = { id: number; slot: string; value_mg_dl: number };
 export default function Tracker({ onExpired }: { onExpired: () => void }) {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 30000);
-    return () => clearInterval(timer);
-  }, []);
-  const today = dayFormat.format(now);
+  const now = usePatientClock();
+  const today = patientDayFormat.format(now);
   const [date, setDate] = useState(today);
-  const [period, setPeriod] = useState(1);
+  const [period, setPeriod] = useState<ReportPeriod>("month_to_date");
   const [hash, setHash] = useState(() => location.hash);
   const [page] = hash.split("?");
   const reports = page === "#reports";
   const history = page === "#history";
+  const sharing = page === "#share-reports";
   const [revision, refresh] = useState(0);
   useEffect(() => {
     const navigate = () => setHash(location.hash);
@@ -46,7 +42,7 @@ export default function Tracker({ onExpired }: { onExpired: () => void }) {
       <nav className="journal-nav" aria-label="Journal">
         <a
           href="#logbook"
-          aria-current={!reports && !history ? "page" : undefined}
+          aria-current={!reports && !history && !sharing ? "page" : undefined}
         >
           Logbook
         </a>
@@ -56,60 +52,37 @@ export default function Tracker({ onExpired }: { onExpired: () => void }) {
         <a href="#reports" aria-current={reports ? "page" : undefined}>
           Reports
         </a>
+        <a href="#share-reports" aria-current={sharing ? "page" : undefined}>
+          Share reports
+        </a>
       </nav>
       <div className="heading">
         <div>
           <h1>
-            {reports
-              ? "Glucose reports"
-              : history
-                ? "Reading history"
-                : "Daily logbook"}
+            {sharing
+              ? "Share reports"
+              : reports
+                ? "Glucose reports"
+                : history
+                  ? "Reading history"
+                  : "Daily logbook"}
           </h1>
         </div>
-        {!history && (
-          <label>
-            Selected date
-            <input
-              type="date"
-              value={date}
-              min="0001-01-01"
-              max={today}
-              onChange={(e) => {
-                if (
-                  e.target.validity.valid &&
-                  e.target.value &&
-                  e.target.value <= today
-                )
-                  setDate(e.target.value);
-              }}
-            />
-          </label>
+        {!history && !sharing && (
+          <ReportDateInput date={date} today={today} onChange={setDate} />
         )}
       </div>
-      {history ? (
+      {sharing ? (
+        <ReportSharing onExpired={onExpired} />
+      ) : history ? (
         <ReadingHistory key={revision} onExpired={onExpired} />
       ) : reports ? (
         <>
-          <div
-            className="report-options"
-            role="group"
-            aria-label="Report period"
-          >
-            {periods.map(([key, label], i) => (
-              <button
-                key={key}
-                aria-pressed={period === i}
-                onClick={() => setPeriod(i)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <ReportPeriodPicker period={period} onChange={setPeriod} />
           <ReportPage
             key={date + period + ":" + revision}
             date={date}
-            period={periods[period][0]}
+            period={period}
             onExpired={onExpired}
           />
         </>

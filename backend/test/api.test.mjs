@@ -138,6 +138,7 @@ test("registration, normalized email, password hashing and session lifecycle", a
     id: user.id,
     name: "Session",
     email: user.email,
+    role: "patient",
   });
   assert.equal(
     (await request("POST", "/auth/logout", user.cookie)).status,
@@ -317,7 +318,142 @@ test("inclusive report ranges, slot order, rounding and changes after edit and d
   assert.equal((await report("daily", "2024-02-29")).summary.average, 91);
 });
 
-test("demo seed populates reports and preserves edited readings on rerun", async () => {
+test("patients can share only their own reports and revoke even cached access", async () => {
+  const credentials = {
+    email: "doctor@example.test",
+    password: "test password",
+  };
+  const registered = await request("POST", "/auth/register", null, {
+    ...credentials,
+    name: "Doctor",
+    role: "doctor",
+  });
+  assert.equal(registered.status, 201);
+  assert.equal(registered.data.role, "patient");
+  const doctorId = registered.data.id;
+  await pool.query("UPDATE users SET role = 'doctor' WHERE id = $1", [
+    doctorId,
+  ]);
+  const session = await request("POST", "/auth/login", null, credentials);
+  assert.equal(session.status, 200);
+  assert.equal(session.data.role, "doctor");
+  const { cookie } = session;
+  const patientsPath = "/doctor/patients";
+  assert.equal((await request("GET", patientsPath)).status, 401);
+  assert.equal((await request("GET", patientsPath, alice.cookie)).status, 403);
+  assert.deepEqual((await request("GET", patientsPath, cookie)).data, []);
+  const sharingPath = "/report-sharing";
+  const grantPath = `${sharingPath}/${doctorId}`;
+  assert.equal((await request("GET", sharingPath)).status, 401);
+  for (const [method, path] of [
+    ["GET", sharingPath],
+    ["POST", `${sharingPath}/lookup`],
+    ["PUT", grantPath],
+    ["DELETE", grantPath],
+  ]) {
+    assert.equal((await request(method, path, cookie)).status, 403);
+  }
+  assert.equal(
+    (
+      await request("POST", `${sharingPath}/lookup`, alice.cookie, {
+        email: bob.email,
+      })
+    ).status,
+    404,
+  );
+  assert.equal(
+    (await request("PUT", `${sharingPath}/${bob.id}`, alice.cookie)).status,
+    404,
+  );
+  const doctor = { id: doctorId, name: "Doctor", email: credentials.email };
+  const lookup = await request("POST", `${sharingPath}/lookup`, alice.cookie, {
+    email: ` ${credentials.email.toUpperCase()} `,
+  });
+  assert.equal(lookup.status, 200);
+  assert.deepEqual(lookup.data, doctor);
+  assert.deepEqual((await request("GET", sharingPath, alice.cookie)).data, []);
+  assert.deepEqual((await request("GET", patientsPath, cookie)).data, []);
+  for (const grant of await Promise.all([
+    request("PUT", grantPath, alice.cookie, { patient_id: bob.id }),
+    request("PUT", grantPath, alice.cookie),
+  ])) {
+    assert.equal(grant.status, 200);
+    assert.deepEqual(grant.data, doctor);
+  }
+  assert.deepEqual((await request("GET", sharingPath, alice.cookie)).data, [
+    doctor,
+  ]);
+  assert.deepEqual((await request("GET", sharingPath, bob.cookie)).data, []);
+  assert.equal(
+    (await request("DELETE", grantPath, bob.cookie, { patient_id: alice.id }))
+      .status,
+    204,
+  );
+  assert.deepEqual((await request("GET", patientsPath, cookie)).data, [
+    { id: alice.id, name: alice.name, email: alice.email },
+  ]);
+
+  const date = "2024-02-29";
+  const ownReading = await add(reading(date, slots[0], 123));
+  await add(reading(date, slots[0], 185), bob);
+  const patientReport = (id) =>
+    `${patientsPath}/${id}/reports?period=daily&date=${date}`;
+  const assigned = await request("GET", patientReport(alice.id), cookie);
+  assert.equal(assigned.status, 200);
+  assert.equal(assigned.data.summary.average, 123);
+  assert.equal(
+    (await request("GET", patientReport(bob.id), cookie)).status,
+    404,
+  );
+  assert.equal(
+    (await request("GET", patientReport(alice.id), alice.cookie)).status,
+    403,
+  );
+  for (const [method, path] of [
+    ["GET", "/readings"],
+    ["GET", "/readings/history"],
+    ["POST", "/readings"],
+    ["PATCH", `/readings/${ownReading.id}`],
+    ["DELETE", `/readings/${ownReading.id}`],
+    ["GET", `/reports?period=daily&date=${date}`],
+  ]) {
+    assert.equal((await request(method, path, cookie)).status, 403);
+  }
+  const updated = await request(
+    "PATCH",
+    `/readings/${ownReading.id}`,
+    alice.cookie,
+    {
+      value_mg_dl: 137,
+    },
+  );
+  assert.equal(updated.status, 200);
+  const fresh = await request("GET", patientReport(alice.id), cookie);
+  assert.equal(fresh.data.summary.average, 137);
+
+  if (reportRedis) {
+    const {
+      rows: [{ report_revision: revision }],
+    } = await pool.query("SELECT report_revision FROM users WHERE id = $1", [
+      alice.id,
+    ]);
+    assert.ok(
+      await reportRedis.get(
+        `sweety:reports:v1:${alice.id}:${revision}:daily:${date}:${date}`,
+      ),
+    );
+  }
+  assert.equal((await request("DELETE", grantPath, alice.cookie)).status, 204);
+  assert.deepEqual((await request("GET", sharingPath, alice.cookie)).data, []);
+  assert.equal(
+    (await request("GET", patientReport(alice.id), cookie)).status,
+    404,
+  );
+  assert.deepEqual((await request("GET", patientsPath, cookie)).data, []);
+  assert.equal((await report("daily", date)).summary.average, 137);
+});
+
+test("demo seed preserves edited readings and revoked access on rerun", async () => {
   const seed = () => execFileSync("npm", ["run", "seed"], { env: process.env });
   seed();
   const login = await request("POST", "/auth/login", null, {
@@ -325,6 +461,16 @@ test("demo seed populates reports and preserves edited readings on rerun", async
     password: "sweety-local-demo",
   });
   assert.equal(login.status, 200);
+  const doctor = await request("POST", "/auth/login", null, {
+    email: "doctor@sweety.example",
+    password: "sweety-local-doctor",
+  });
+  assert.equal(doctor.status, 200);
+  assert.equal(doctor.data.role, "doctor");
+  assert.deepEqual(
+    (await request("GET", "/doctor/patients", doctor.cookie)).data,
+    [{ id: login.data.id, name: login.data.name, email: login.data.email }],
+  );
   const list = await request("GET", "/readings", login.cookie);
   assert.equal(list.status, 200);
   const now = new Date();
@@ -355,10 +501,19 @@ test("demo seed populates reports and preserves edited readings on rerun", async
     (await request("PATCH", path, login.cookie, { value_mg_dl: 105 })).status,
     200,
   );
+  assert.equal(
+    (await request("DELETE", `/report-sharing/${doctor.data.id}`, login.cookie))
+      .status,
+    204,
+  );
   seed();
   const after = await request("GET", "/readings", login.cookie);
   assert.equal(after.data.length, count);
   assert.equal(after.data[0].value_mg_dl, 105);
+  assert.deepEqual(
+    (await request("GET", "/doctor/patients", doctor.cookie)).data,
+    [],
+  );
 });
 
 test("reading history pages contain only the signed-in user's readings, newest first", async () => {

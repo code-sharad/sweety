@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { DatabaseError } from "pg";
 import { Router } from "express";
-import { requireUser } from "../auth/sessions";
+import { requireRole, requireUser } from "../auth/sessions";
 import { pool } from "../db/pool";
 import {
   readingIdSchema,
@@ -13,8 +13,9 @@ import {
 } from "./schema";
 
 export const readingsRouter = Router();
+readingsRouter.use(requireUser, requireRole("patient"));
 
-readingsRouter.get("/", requireUser, async (req, res) => {
+readingsRouter.get("/", async (req, res) => {
   const parsed = readingFilterSchema.safeParse(req.query);
   if (!parsed.success) {
     const issue = parsed.error.issues[0]!;
@@ -38,7 +39,7 @@ const historyPage = z
   .transform(Number)
   .pipe(z.int().max(2147483647));
 const historyPageSize = 10;
-readingsRouter.get("/history", requireUser, async (req, res) => {
+readingsRouter.get("/history", async (req, res) => {
   const parsed = historyPage.safeParse(req.query.page ?? "1");
   if (!parsed.success) {
     res.status(400).json({ message: "Enter a valid history page." });
@@ -62,7 +63,7 @@ readingsRouter.get("/history", requireUser, async (req, res) => {
   });
 });
 
-readingsRouter.post("/", requireUser, async (req, res) => {
+readingsRouter.post("/", async (req, res) => {
   const parsed = scheduledReadingSchema.safeParse(req.body);
   if (!parsed.success) {
     const issue = parsed.error.issues[0]!;
@@ -103,7 +104,7 @@ async function conflictMessage(
     : `You already have a reading for this slot (${slotLabels[slot]}) on this date.`;
 }
 
-readingsRouter.use("/:id", requireUser, (req, res, next) => {
+readingsRouter.use("/:id", (req, res, next) => {
   const id = readingIdSchema.safeParse(req.params.id);
   if (!id.success) {
     res.status(400).json({ field: "id", message: "Enter a valid reading ID." });

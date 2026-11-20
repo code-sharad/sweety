@@ -184,7 +184,7 @@ main {
 .actions small {
   display: inline;
 }
-.actions button {
+.actions button:not(.primary) {
   color: var(--accent);
 }
 .slot:has(.editor) {
@@ -199,7 +199,7 @@ main {
 }
 .journal-nav {
   display: flex;
-  gap: 1.75rem;
+  column-gap: clamp(0.7rem, 3vw, 1.75rem);
   border-bottom: 1px solid var(--rule);
   margin-bottom: 1.2rem;
 }
@@ -226,6 +226,47 @@ main {
   padding: 4px;
   border-radius: 6px;
   margin-bottom: 1.5rem;
+}
+.patient-picker {
+  width: min(100%, 25rem);
+  margin-bottom: 1.5rem;
+}
+.report-sharing {
+  display: grid;
+  gap: 1.25rem;
+  width: min(100%, 40rem);
+}
+.report-sharing > p,
+.shared-doctors p,
+.share-confirm p {
+  overflow-wrap: anywhere;
+}
+.report-sharing form,
+.share-confirm,
+.shared-doctors li {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.report-sharing form label {
+  flex: 1 1 15rem;
+}
+.share-confirm,
+.shared-doctors li {
+  justify-content: space-between;
+  align-items: center;
+  padding-block: 1rem;
+  border-top: 1px solid var(--rule);
+}
+.shared-doctors h2 {
+  margin-bottom: 0.85rem;
+  font-size: 1.4rem;
+}
+.shared-doctors ul {
+  padding: 0;
+  margin: 0;
+  list-style: none;
 }
 .report-options button {
   border: 0;

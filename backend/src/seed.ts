@@ -1,9 +1,38 @@
 import "dotenv/config";
 import bcrypt from "bcrypt";
+import type { PoolClient } from "pg";
 import { pool } from "./db/pool";
 
-const email = "demo@sweety.example";
-const password = "sweety-local-demo";
+async function seedAccount(
+  client: PoolClient,
+  name: string,
+  email: string,
+  password: string,
+  role: "patient" | "doctor",
+): Promise<{ id: number; created: boolean }> {
+  const inserted = await client.query(
+    `INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)
+     ON CONFLICT (email) DO NOTHING RETURNING id`,
+    [name, email, await bcrypt.hash(password, 12), role],
+  );
+  if (inserted.rowCount) return { id: inserted.rows[0].id, created: true };
+
+  const existing = await client.query(
+    "SELECT id, password_hash, role FROM users WHERE email = $1 FOR UPDATE",
+    [email],
+  );
+  const account = existing.rows[0];
+  if (
+    !account ||
+    account.role !== role ||
+    !(await bcrypt.compare(password, account.password_hash))
+  ) {
+    throw new Error(
+      `Demo email ${email} is in use with a different role or password.`,
+    );
+  }
+  return { id: account.id, created: false };
+}
 
 async function seed() {
   if (!process.env.DATABASE_URL)
@@ -11,26 +40,26 @@ async function seed() {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    const inserted = await client.query(
-      `INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3)
-       ON CONFLICT (email) DO NOTHING RETURNING id`,
-      ["Demo Patient", email, await bcrypt.hash(password, 12)],
+    const { id: userId } = await seedAccount(
+      client,
+      "Demo Patient",
+      "demo@sweety.example",
+      "sweety-local-demo",
+      "patient",
     );
-    let userId = inserted.rows[0]?.id;
-    if (!userId) {
-      const existing = await client.query(
-        "SELECT id, password_hash FROM users WHERE email = $1 FOR UPDATE",
-        [email],
+    const doctor = await seedAccount(
+      client,
+      "Demo Doctor",
+      "doctor@sweety.example",
+      "sweety-local-doctor",
+      "doctor",
+    );
+    if (doctor.created) {
+      await client.query(
+        `INSERT INTO doctor_patient_assignments (doctor_id, patient_id)
+         VALUES ($1, $2)`,
+        [doctor.id, userId],
       );
-      if (
-        !existing.rowCount ||
-        !(await bcrypt.compare(password, existing.rows[0].password_hash))
-      ) {
-        throw new Error(
-          "Demo email is already in use with different credentials.",
-        );
-      }
-      userId = existing.rows[0].id;
     }
     const samples = await client.query(
       `WITH local_clock AS (
@@ -52,7 +81,7 @@ async function seed() {
     );
     await client.query("COMMIT");
     console.log(
-      `Demo patient ready. Added ${samples.rowCount} sample readings.`,
+      `Demo patient and doctor ready. Added ${samples.rowCount} sample readings.`,
     );
   } catch (error) {
     await client.query("ROLLBACK");

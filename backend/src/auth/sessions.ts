@@ -23,7 +23,7 @@ function sessionHash(req: Request) {
 
 export const requireUser: RequestHandler = async (req, res, next) => {
   const result = await pool.query(
-    `SELECT u.id, u.name, u.email, u.report_revision FROM sessions s
+    `SELECT u.id, u.name, u.email, u.role, u.report_revision FROM sessions s
      JOIN users u ON u.id = s.user_id
      WHERE s.token_hash = $1 AND s.expires_at > now()`,
     [sessionHash(req)],
@@ -37,6 +37,16 @@ export const requireUser: RequestHandler = async (req, res, next) => {
   res.locals.reportRevision = report_revision;
   next();
 };
+
+export function requireRole(role: "patient" | "doctor"): RequestHandler {
+  return (_req, res, next) => {
+    if (res.locals.user.role !== role) {
+      res.status(403).json({ message: "You do not have access to this page." });
+      return;
+    }
+    next();
+  };
+}
 
 export async function startSession(userId: number, res: Response) {
   const token = randomBytes(32).toString("hex");

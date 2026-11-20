@@ -1,4 +1,9 @@
-export type User = { id: number; name: string; email: string };
+export type User = {
+  id: number;
+  name: string;
+  email: string;
+  role: "patient" | "doctor";
+};
 
 export class ApiError extends Error {
   readonly status: number;
