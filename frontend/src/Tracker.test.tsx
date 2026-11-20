@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { slots } from "./slots";
 import Tracker from "./Tracker";
 
 type Reading = { id: number; slot: string; value_mg_dl: number };
@@ -247,6 +248,37 @@ describe("reading form", () => {
     expect(screen.getByText("Open since 08:00 IST")).toBeInTheDocument();
     expect(screen.getByText("Opens at 12:00 IST")).toBeInTheDocument();
     expect(screen.getByText("Opens at 19:00 IST")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/empty reading slots today/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reminds users after 9 p.m. IST until today's last slot is filled", async () => {
+    vi.setSystemTime(new Date("2026-11-19T15:30:00Z"));
+    serve(
+      slots.slice(0, 3).map(([slot], i) => ({
+        id: i + 1,
+        slot,
+        value_mg_dl: 100,
+      })),
+    );
+    const { user } = renderTracker();
+    const reminder = "You have 1 empty reading slot today.";
+    expect(await screen.findByText(reminder)).toHaveAttribute("role", "status");
+
+    const date = screen.getByLabelText("Selected date");
+    fireEvent.change(date, { target: { value: "2026-11-18" } });
+    await screen.findByText("3 of 4 recorded");
+    expect(screen.queryByText(reminder)).not.toBeInTheDocument();
+
+    fireEvent.change(date, { target: { value: today } });
+    await screen.findByText(reminder);
+    await user.click(screen.getByRole("button", { name: "+ Add reading" }));
+    await user.type(screen.getByLabelText("Value (mg/dl)"), "110");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await screen.findByText("4 of 4 recorded");
+    expect(screen.queryByText(reminder)).not.toBeInTheDocument();
   });
 
   it("allows all four slots for a past date", async () => {

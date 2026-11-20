@@ -6,7 +6,7 @@ Sweety records a patient's blood glucose readings and summarizes them by day and
 
 From the repository root, run `docker compose up --build -d` and open [Sweety](http://localhost:3000). The app serves the React client and API together. PostgreSQL applies the migrations on first startup and keeps the data in a named volume. Run `docker compose down` to stop the stack.
 
-If you already have a Compose database volume, apply any pending migrations before rebuilding. For example, if migrations 001 through 003 are already applied, run `docker compose exec -T db psql -v ON_ERROR_STOP=1 -U sweety -d sweety < backend/migrations/005_doctor_roles.sql` once.
+If you already have a Compose database volume, apply any pending migrations before rebuilding. For example, if the first four migrations are already applied, run `docker compose exec -T db psql -v ON_ERROR_STOP=1 -U sweety -d sweety < backend/migrations/005_doctor_roles.sql` once.
 
 ## Local setup without Compose
 
@@ -50,7 +50,8 @@ For Neon, open the SQL Editor on the same branch and database. For Docker, conne
 1. [001_initial.sql](backend/migrations/001_initial.sql)
 2. [002_sessions.sql](backend/migrations/002_sessions.sql)
 3. [003_report_revision.sql](backend/migrations/003_report_revision.sql)
-4. [005_doctor_roles.sql](backend/migrations/005_doctor_roles.sql)
+4. [004_daily_reminders.sql](backend/migrations/004_daily_reminders.sql)
+5. [005_doctor_roles.sql](backend/migrations/005_doctor_roles.sql)
 
 ### Report caching
 
@@ -69,6 +70,12 @@ npm --prefix frontend run dev
 ```
 
 Open the local URL printed by Vite. The API health check is available at `http://localhost:3000/api/health`.
+
+### Daily reminders
+
+Compose starts the BullMQ worker automatically. For local development, apply the migrations, set `REDIS_URL` in `backend/.env` to a Redis instance configured with `noeviction`, and run `npm --prefix backend run reminders` in a separate terminal.
+
+The worker checks for incomplete logbooks at 21:00 IST and stores one row per eligible patient and reading date in `daily_reminders`, including patients with zero readings. Each row records the count at the time of the check. The in-app banner uses the patient's current readings so it clears after the last slot is filled, even if the worker has already logged a reminder.
 
 ## Try the demo
 
@@ -92,11 +99,11 @@ npm --prefix frontend run lint
 
 The backend suite builds TypeScript, starts a disposable PostgreSQL cluster, applies the migrations, exercises the API over HTTP, and removes the cluster. Run it as a regular operating-system user. It supplies its own database connection. The frontend suite uses React Testing Library to exercise the reading form against a mocked API in jsdom.
 
-To include the report cache integration test, point `TEST_REDIS_URL` at a fresh, disposable Redis instance when running the backend suite.
+To include the report cache and scheduled reminder integration tests, point `TEST_REDIS_URL` at a fresh, disposable Redis instance when running the backend suite.
 
 ## Notes
 
 - The assignment leaves the patient timezone open. Sweety uses Asia/Kolkata for both the tracker and the API so they agree on when a new day starts, even if the browser uses another timezone.
 - The assignment names four meal slots and leaves their opening times unspecified. For the current day, Sweety assumes fasting opens at midnight, after breakfast at 08:00, after lunch at noon, and after dinner at 19:00 IST. Slots stay open once available so patients can enter a reading later. All four slots are available for past dates.
-- From 21:00 IST, today's logbook shows an in-app reminder if any reading slots are empty. It clears once all four are filled. With more time, I would add email reminders for patients who have the app closed.
+- With more time, I would add email reminders for patients who have the app closed.
 - With more time, I would automate the two-account browser flow, including switching patients on the same device and checking that editing a reading updates the report.

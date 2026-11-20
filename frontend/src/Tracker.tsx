@@ -15,6 +15,7 @@ import {
   usePatientClock,
 } from "./patientTime";
 import { slots } from "./slots";
+const reminderHour = 21;
 const hourFormat = new Intl.DateTimeFormat("en-GB", {
   timeZone: patientTimeZone,
   hour: "2-digit",
@@ -25,6 +26,8 @@ export default function Tracker({ onExpired }: { onExpired: () => void }) {
   const now = usePatientClock();
   const today = patientDayFormat.format(now);
   const [date, setDate] = useState(today);
+  const isToday = date === today;
+  const hour = isToday ? Number(hourFormat.format(now)) : 24;
   const [period, setPeriod] = useState<ReportPeriod>("month_to_date");
   const [hash, setHash] = useState(() => location.hash);
   const [page] = hash.split("?");
@@ -91,7 +94,8 @@ export default function Tracker({ onExpired }: { onExpired: () => void }) {
           onSaved={() => refresh((n) => n + 1)}
           key={date + hash + revision}
           date={date}
-          hour={date === today ? Number(hourFormat.format(now)) : 24}
+          hour={hour}
+          showReminder={isToday && hour >= reminderHour}
           onExpired={onExpired}
         />
       )}
@@ -102,14 +106,17 @@ function Day({
   onSaved,
   date,
   hour,
+  showReminder,
   onExpired,
 }: {
   date: string;
   hour: number;
+  showReminder: boolean;
   onSaved: () => void;
   onExpired: () => void;
 }) {
   const [data, setData] = useState<Reading[] | null>(null);
+  const missingReadings = slots.length - (data?.length ?? 0);
   const [revision, refresh] = useState(0);
   const [error, setError] = useState("");
   const [edit, setEdit] = useState("");
@@ -184,8 +191,17 @@ function Day({
         <section className="sheet">
           <div className="sheethead">
             <h2>Readings</h2>
-            <span>{data.length} of 4 recorded</span>
+            <span>
+              {data.length} of {slots.length} recorded
+            </span>
           </div>
+          {showReminder && missingReadings > 0 && (
+            <p className="reading-reminder" role="status">
+              {missingReadings === 1
+                ? "You have 1 empty reading slot today."
+                : `You have ${missingReadings} empty reading slots today.`}
+            </p>
+          )}
           {slots.map(([slot, label, opens]) => {
             const row = data.find((r) => r.slot === slot);
             return (

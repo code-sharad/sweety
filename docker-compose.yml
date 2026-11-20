@@ -16,7 +16,9 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--save", "", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redisdata:/data
 
   app:
     build: .
@@ -31,5 +33,19 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
 
+  reminders:
+    build: .
+    command: ["node", "dist/jobs/worker.js"]
+    environment:
+      DATABASE_URL: postgresql://sweety:sweety_local_dev@db:5432/sweety
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: on-failure
+
 volumes:
   pgdata:
+  redisdata:

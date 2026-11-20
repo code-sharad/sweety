@@ -8,6 +8,7 @@ import { createServer } from "node:net";
 import { once } from "node:events";
 import EmbeddedPostgres from "embedded-postgres";
 import bcrypt from "bcrypt";
+import { Queue } from "bullmq";
 import { execFileSync } from "node:child_process";
 
 const testRedisUrl = process.env.TEST_REDIS_URL;
@@ -452,6 +453,82 @@ test("patients can share only their own reports and revoke even cached access", 
   assert.deepEqual((await request("GET", patientsPath, cookie)).data, []);
   assert.equal((await report("daily", date)).summary.average, 137);
 });
+
+test("records incomplete patient logbooks once for the scheduled IST date", async () => {
+  const { recordDailyReminders } =
+    await import("../dist/jobs/daily-reminders.js");
+  const date = "2024-07-02";
+  const scheduledAt = Date.parse("2024-07-01T20:30:00Z");
+  const complete = await account("Complete");
+  const doctor = await account("ReminderDoctor");
+  await pool.query("UPDATE users SET role = 'doctor' WHERE id = $1", [
+    doctor.id,
+  ]);
+  for (const slot of slots) await add(reading(date, slot), complete);
+  for (const slot of slots.slice(0, 3)) await add(reading(date, slot));
+  await add(reading("2024-07-01"), bob);
+
+  await Promise.all([
+    recordDailyReminders(scheduledAt),
+    recordDailyReminders(scheduledAt),
+  ]);
+  await add(reading(date, slots[3]));
+  await recordDailyReminders(scheduledAt);
+
+  const { rows } = await pool.query(
+    `SELECT user_id, reading_count FROM daily_reminders
+     WHERE reading_date = $1 AND user_id = ANY($2) ORDER BY user_id`,
+    [date, [alice.id, bob.id, complete.id]],
+  );
+  assert.deepEqual(rows, [
+    { user_id: alice.id, reading_count: 3 },
+    { user_id: bob.id, reading_count: 0 },
+  ]);
+  const doctorReminders = await pool.query(
+    `SELECT 1 FROM daily_reminders r JOIN users u ON u.id = r.user_id
+     WHERE r.reading_date = $1 AND u.id = $2`,
+    [date, doctor.id],
+  );
+  assert.equal(doctorReminders.rowCount, 0);
+});
+
+test(
+  "BullMQ schedules the evening check and the worker records its result",
+  {
+    skip: !testRedisUrl,
+  },
+  async () => {
+    const { startDailyReminderWorker } =
+      await import("../dist/jobs/daily-reminders.js");
+    const queue = new Queue("daily-reminders", {
+      connection: { url: testRedisUrl },
+    });
+    const worker = await startDailyReminderWorker(testRedisUrl);
+    try {
+      const [scheduler] = await queue.getJobSchedulers();
+      assert.equal(scheduler.pattern, "0 21 * * *");
+      assert.equal(scheduler.tz, "Asia/Kolkata");
+      const [scheduledJob] = await queue.getDelayed();
+      const scheduledTime = new Date(scheduler.next).toISOString();
+      assert.equal(scheduledTime.slice(11), "15:30:00.000Z");
+
+      const completed = once(worker, "completed", {
+        signal: AbortSignal.timeout(5000),
+      });
+      await scheduledJob.promote();
+      await completed;
+
+      const { rows } = await pool.query(
+        "SELECT reading_count FROM daily_reminders WHERE user_id = $1 AND reading_date = $2",
+        [bob.id, scheduledTime.slice(0, 10)],
+      );
+      assert.deepEqual(rows, [{ reading_count: 0 }]);
+    } finally {
+      await worker.close();
+      await queue.close();
+    }
+  },
+);
 
 test("demo seed preserves edited readings and revoked access on rerun", async () => {
   const seed = () => execFileSync("npm", ["run", "seed"], { env: process.env });

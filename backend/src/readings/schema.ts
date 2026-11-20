@@ -7,8 +7,9 @@ export const slotLabels = {
   after_dinner: "After dinner",
 } as const;
 
-const patientDate = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Asia/Kolkata",
+export const patientTimeZone = "Asia/Kolkata";
+export const patientDate = new Intl.DateTimeFormat("en-CA", {
+  timeZone: patientTimeZone,
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
@@ -52,7 +53,7 @@ const openingHours = {
 } satisfies Record<keyof typeof slotLabels, number>;
 
 const patientHour = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Asia/Kolkata",
+  timeZone: patientTimeZone,
   hour: "2-digit",
   hourCycle: "h23",
 });
