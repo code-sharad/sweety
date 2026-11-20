@@ -21,7 +21,23 @@ export const calendarDate = z.iso
   .date("Enter a valid date in YYYY-MM-DD format.")
   .refine((date) => !date.startsWith("0000"), "Enter a valid calendar year.");
 
-export const readingFilterSchema = z.object({ date: calendarDate.optional() });
+function paginationParameter(max: number, message: string) {
+  return z
+    .string(message)
+    .regex(/^[1-9]\d*$/, message)
+    .transform(Number)
+    .pipe(z.int(message).max(max, message))
+    .optional();
+}
+
+export const readingFilterSchema = z.object({
+  date: calendarDate.optional(),
+  page: paginationParameter(2147483647, "Enter a valid page number."),
+  limit: paginationParameter(
+    100,
+    "Limit must be a whole number from 1 to 100.",
+  ),
+});
 
 export const readingSchema = z.object({
   reading_date: calendarDate.refine(

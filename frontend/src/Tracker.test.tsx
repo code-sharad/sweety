@@ -302,6 +302,30 @@ describe("reading form", () => {
     });
   });
 
+  it("shows a future-date error and keeps the last valid date active", async () => {
+    renderTracker();
+    await screen.findByRole("heading", { name: "Readings" });
+    const date = screen.getByLabelText("Selected date");
+
+    fireEvent.change(date, { target: { value: "2026-11-20" } });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Date cannot be in the future.",
+    );
+    expect(date).toHaveAccessibleDescription("Date cannot be in the future.");
+    expect(date).toHaveValue(today);
+    expect(calls.map(({ path }) => path)).toEqual([
+      `/api/readings?date=${today}`,
+    ]);
+
+    fireEvent.change(date, { target: { value: "2026-11-18" } });
+
+    await waitFor(() =>
+      expect(calls.at(-1)?.path).toBe("/api/readings?date=2026-11-18"),
+    );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("shows a load error and retries", async () => {
     let fail = true;
     respond = () =>
@@ -326,4 +350,25 @@ describe("reading form", () => {
     await waitFor(() => expect(onExpired).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
+});
+
+it("loads the next History page from the readings endpoint", async () => {
+  window.location.hash = "#history";
+  respond = ({ path }) =>
+    json({
+      rows: [
+        { id: 1, reading_date: today, slot: slots[0][0], value_mg_dl: 95 },
+      ],
+      hasNext: path === "/api/readings?page=1&limit=20",
+    });
+  const { user } = renderTracker();
+
+  await user.click(await screen.findByRole("button", { name: "Next" }));
+
+  expect(await screen.findByRole("table")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+  expect(calls.map(({ path }) => path)).toEqual([
+    "/api/readings?page=1&limit=20",
+    "/api/readings?page=2&limit=20",
+  ]);
 });

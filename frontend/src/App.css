@@ -154,6 +154,10 @@ main {
 .heading {
   padding: 1rem 0 2rem;
 }
+.date-filter {
+  display: grid;
+  gap: 0.45rem;
+}
 .sheet {
   min-width: 0;
   border-top: 2px solid var(--accent);

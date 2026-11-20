@@ -412,7 +412,7 @@ test("patients can share only their own reports and revoke even cached access", 
   );
   for (const [method, path] of [
     ["GET", "/readings"],
-    ["GET", "/readings/history"],
+    ["GET", "/readings?page=1&limit=20"],
     ["POST", "/readings"],
     ["PATCH", `/readings/${ownReading.id}`],
     ["DELETE", `/readings/${ownReading.id}`],
@@ -593,26 +593,46 @@ test("demo seed preserves edited readings and revoked access on rerun", async ()
   );
 });
 
-test("reading history pages contain only the signed-in user's readings, newest first", async () => {
-  for (let day = 1; day <= 11; day++) {
+test("reading pages honor the date and limit and contain only the signed-in user's readings", async () => {
+  for (let day = 1; day <= 21; day++) {
     await add(reading("2024-03-" + String(day).padStart(2, "0")));
   }
-  await add(reading("2024-03-12"), bob);
-  const first = await request("GET", "/readings/history", alice.cookie);
-  const last = await request("GET", "/readings/history?page=2", alice.cookie);
-  assert.equal(first.data.rows.length, 10);
-  assert.equal(first.data.rows[0].reading_date, "2024-03-11");
+  await add(reading("2024-03-21", slots[3]));
+  await add(reading("2024-03-22"), bob);
+  const first = await request("GET", "/readings?page=1&limit=20", alice.cookie);
+  const last = await request("GET", "/readings?page=2", alice.cookie);
+  assert.equal(first.status, 200);
+  assert.equal(first.data.rows.length, 20);
+  assert.equal(first.data.rows[0].reading_date, "2024-03-21");
+  assert.equal(first.data.rows[0].slot, slots[3]);
   assert.equal(first.data.hasNext, true);
   assert.deepEqual(
     last.data.rows.map((row) => row.reading_date),
-    ["2024-03-01"],
+    ["2024-03-02", "2024-03-01"],
   );
   assert.equal(last.data.hasNext, false);
-  assert.equal(
-    (await request("GET", "/readings/history?page=0", alice.cookie)).status,
-    400,
+  const filtered = await request(
+    "GET",
+    "/readings?date=2024-03-21&limit=1",
+    alice.cookie,
   );
-  assert.equal((await request("GET", "/readings/history")).status, 401);
+  assert.deepEqual(filtered.data, {
+    rows: [first.data.rows[0]],
+    hasNext: true,
+  });
+  const empty = await request("GET", "/readings?page=3", alice.cookie);
+  assert.deepEqual(empty.data, { rows: [], hasNext: false });
+  for (const [query, field] of [
+    ["page=0", "page"],
+    ["page=1&page=2", "page"],
+    ["limit=1.5", "limit"],
+    ["limit=101", "limit"],
+  ]) {
+    const invalid = await request("GET", `/readings?${query}`, alice.cookie);
+    assert.equal(invalid.status, 400);
+    assert.equal(invalid.data.field, field);
+  }
+  assert.equal((await request("GET", "/readings?page=1&limit=20")).status, 401);
 });
 
 test(

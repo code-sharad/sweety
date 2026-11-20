@@ -1,3 +1,5 @@
+import { useId, useState } from "react";
+
 const periods = [
   ["daily", "Daily"],
   ["month_to_date", "Month-to-date"],
@@ -15,20 +17,32 @@ export function ReportDateInput({
   today: string;
   onChange: (date: string) => void;
 }) {
+  const errorId = useId();
+  const [futureDate, setFutureDate] = useState(false);
   return (
-    <label>
-      Selected date
-      <input
-        type="date"
-        value={date}
-        min="0001-01-01"
-        max={today}
-        onChange={(e) => {
-          const { validity, value } = e.currentTarget;
-          if (validity.valid && value && value <= today) onChange(value);
-        }}
-      />
-    </label>
+    <div className="date-filter">
+      <label>
+        Selected date
+        <input
+          type="date"
+          value={date}
+          min="0001-01-01"
+          max={today}
+          aria-invalid={futureDate || undefined}
+          aria-describedby={futureDate ? errorId : undefined}
+          onChange={(e) => {
+            const { validity, value } = e.currentTarget;
+            setFutureDate(validity.rangeOverflow);
+            if (validity.valid && value) onChange(value);
+          }}
+        />
+      </label>
+      {futureDate && (
+        <small id={errorId} role="alert">
+          Date cannot be in the future.
+        </small>
+      )}
+    </div>
   );
 }
 

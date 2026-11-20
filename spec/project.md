@@ -42,6 +42,7 @@ Build a Node.js and Express JSON API. Proposed paths below share the /api prefix
 | POST /auth/register | Accept name, email, password. Validate required fields and email format, hash password, and create account (201). Reject duplicate normalized email (409). |
 | POST /auth/login | Verify email and password. Establish authenticated access (200) or return a generic invalid-credentials message (401). |
 | GET /readings?date=YYYY-MM-DD | List the signed-in user's readings, optionally filtered by date (200). Order by newest day first, then slot in display order. |
+| GET /readings?page=1&limit=20 | Return `{ rows, hasNext }` for the signed-in user. Supplying either pagination parameter enables paging. `page` defaults to 1 and `limit` defaults to 20, with a maximum of 100. The optional `date` filter still applies. Pages show newest dates and latest slots first. |
 | POST /readings | Accept reading_date, slot, value_mg_dl. Return saved reading (201). |
 | PATCH /readings/:id | Update supplied reading fields, validate the resulting reading, and return it (200). |
 | DELETE /readings/:id | Delete the owned reading (204). |

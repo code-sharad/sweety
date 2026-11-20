@@ -33,7 +33,7 @@ export default function ReadingHistory({
   }, [onExpired]);
   useEffect(() => {
     let active = true;
-    api<HistoryPage>("readings/history?page=" + page)
+    api<HistoryPage>(`readings?page=${page}&limit=20`)
       .then((result) => {
         if (active) setData(result);
       })
