@@ -73,11 +73,12 @@ With the API and client running, open the Vite URL and sign in with `demo@sweety
 ```sh
 npm --prefix backend test
 npm --prefix backend run fmt:check
+npm --prefix frontend test
 npm --prefix frontend run build
 npm --prefix frontend run lint
 ```
 
-The backend suite builds TypeScript, starts a disposable PostgreSQL cluster, applies the migrations, exercises the API over HTTP, and removes the cluster. Run it as a regular operating-system user. It supplies its own database connection.
+The backend suite builds TypeScript, starts a disposable PostgreSQL cluster, applies the migrations, exercises the API over HTTP, and removes the cluster. Run it as a regular operating-system user. It supplies its own database connection. The frontend suite uses React Testing Library to exercise the reading form against a mocked API in jsdom.
 
 ## Notes
 
