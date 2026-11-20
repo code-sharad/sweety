@@ -4,7 +4,8 @@
     "backend": {
       "root": "backend",
       "framework": "express",
-      "entrypoint": "src/app.ts"
+      "entrypoint": "src/app.ts",
+      "buildCommand": "npm run build -- --noEmit"
     },
     "frontend": {
       "root": "frontend",

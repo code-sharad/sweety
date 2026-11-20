@@ -6,7 +6,7 @@ import { readingsRouter } from "./readings/routes";
 import { reportSharingRouter } from "./reports/sharing";
 import { reportsRouter } from "./reports/routes";
 
-export const app = express();
+const app = express();
 
 app.use(express.json());
 app.use("/api/auth", authRouter);
@@ -23,4 +23,4 @@ if (process.env.STATIC_DIR) {
   app.use(express.static(process.env.STATIC_DIR));
 }
 
-export default app;
+export = app;

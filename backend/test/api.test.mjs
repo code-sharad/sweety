@@ -71,7 +71,7 @@ before(async () => {
   }
   if (testRedisUrl) process.env.REDIS_URL = testRedisUrl;
   else delete process.env.REDIS_URL;
-  const { app } = await import("../dist/app.js");
+  const { default: app } = await import("../dist/app.js");
   ({ reportRedis } = await import("../dist/reports/cache.js"));
   if (reportRedis && !reportRedis.isReady) await once(reportRedis, "ready");
   server = app.listen(0, "127.0.0.1");
