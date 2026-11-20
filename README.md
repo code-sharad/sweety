@@ -8,6 +8,15 @@ From the repository root, run `docker compose up --build -d` and open [Sweety](h
 
 If you already have a Compose database volume, apply any pending migrations before rebuilding. For example, if the first four migrations are already applied, run `docker compose exec -T db psql -v ON_ERROR_STOP=1 -U sweety -d sweety < backend/migrations/005_doctor_roles.sql` once.
 
+## Deploy to Vercel
+
+1. Import the repository as one Vercel project. Leave the Root Directory at the repository root and select the **Services** framework preset. The root `vercel.json` routes `/api/*` to Express and other requests to Vite.
+2. Connect a hosted PostgreSQL database such as Neon. Set `DATABASE_URL` for the project's Production environment, then [apply the migrations](#apply-the-migrations) to that database before the first production deploy. Apply only pending migrations to an existing database.
+3. Connect a Redis database such as Upstash with eviction disabled. Copy its read/write TCP connection string (`rediss://…`) into the project's Production `REDIS_URL` variable.
+4. Deploy to Production. Open the project URL, check `/api/health`, then sign in with a test account and save a sample reading. In **Logs**, look for `Sweety daily reminder worker started` from the `reminders` daemon. It runs the daily check at 21:00 IST.
+
+The `reminders` daemon runs only in Production. Its one 1 GiB instance runs in `iad1`. Vercel's Hobby memory quota is below a full month of continuous uptime. See [Vercel Daemons limits](https://vercel.com/docs/daemons/limits).
+
 ## Local setup without Compose
 
 Install Node.js 26 and npm. Run these commands from the repository root.
